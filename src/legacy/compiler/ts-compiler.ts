@@ -36,6 +36,7 @@ import { Errors, interpolate } from '../../utils/messages'
 import type { ConfigSet } from '../config/config-set'
 
 import { updateOutput } from './compiler-utils'
+import { barrelImportTransformer } from './barrelImportTransformer'
 
 export class TsCompiler implements TsCompilerInstance {
   protected readonly _logger: Logger
@@ -304,13 +305,35 @@ export class TsCompiler implements TsCompilerInstance {
         return version === undefined ? (undefined as any as string) : String(version)
       },
       getScriptSnapshot: (fileName: string) => {
-        const normalizedFileName = normalize(fileName)
+        
+        
+        let normalizedFileName = normalize(fileName)
         const hit = this._isFileInCache(normalizedFileName)
+
 
         this._logger.trace({ normalizedFileName, cacheHit: hit }, 'getScriptSnapshot():', 'cache', hit ? 'hit' : 'miss')
 
         // Read file content from either memory cache or Jest runtime cache or fallback to file system read
         if (!hit) {
+          if (fileName.endsWith('App.spec.ts')) {
+            console.warn("Change to give back the copy file -", fileName);
+                        const transformedFile = this._ts.transpileModule(normalizedFileName, {
+                            transformers: {
+                                before: [barrelImportTransformer],
+                            },
+                            compilerOptions: {
+                                target: this._ts.ScriptTarget.ES2015,
+                                module: this._ts.ModuleKind.ESNext,
+                                isolatedModules: true,
+                                sourceMap: true,
+                                inlineSourceMap: true,
+                                inlineSources: true,
+                            },
+                        });
+
+                        console.warn("Change to give back the copy file -", transformedFile.outputText);
+          }
+
           const fileContent =
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             this._fileContentCache!.get(normalizedFileName) ??
